@@ -38,8 +38,15 @@ class Embed:
         logging.info("finished embed")
         logging.info(duration)
         return results_obj
-    
+
     def add_document(self,document):
+        self.collection.add(
+            documents=[document['document']],
+            metadatas=[document['metadata']],
+            ids=[document['id']]
+        )        
+
+    def add_document_vectors(self,document):
         self.collection.add(
             embeddings=[document['vectors']],
             documents=[document['document']],
@@ -56,6 +63,9 @@ class Embed:
         endtime = time.time()
         logging.info(endtime - starttime)
         return results
+    
+    def collection_count(self):
+        return self.collection.count()
     
     
 
