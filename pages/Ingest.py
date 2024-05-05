@@ -29,7 +29,9 @@ collection = client.get_or_create_collection(name="double-tap",embedding_functio
 
 uploaded = st.file_uploader(label="Choose a PDF...",type='pdf')
 
-if uploaded is not None:
+st.session_state.df = pd.DataFrame([])
+
+if uploaded:
     with st.spinner('Uploading the file...'):
         # convert it to a dataframe
         pdf_bytes = uploaded.getvalue()
@@ -44,32 +46,68 @@ if uploaded is not None:
                        "content":content,
                        "length":len(content)}
             pages.append(pageObj)
+
+    st.session_state.df = pd.DataFrame(pages)
+
+
+def save_df():
+    df = st.session_state.df
+    if len(df) > 0:
+        with st.spinner("Saving..."):
+            collection.add(
+                documents=df['content'].tolist(),
+                embeddings=df['vectors'].tolist(),
+                ids=list(map(str,df['number'].tolist()))
+            )
+                
+
+
+#now that we have the collection, make it visible
+with st.form("df_form"):
+    #always at the top
+    submitted = st.form_submit_button("Create Vectors")
+
+    # df = pd.DataFrame(pages)
+    df = st.session_state.df
+    df_display = st.dataframe(df)
     
-    #now that we have the collection, make it visible
-    df = pd.DataFrame(pages)
-    dfdisplay = st.dataframe(df)
+    if submitted:
+        if len(df) > 0:                
+            with st.spinner("Generating vectors..."):
+                vectors_array = []
+                for idx, row in df.iterrows():
+                    content = row['content']
+                    vectors = ollama.embeddings(model=EMBED_MODEL,prompt=content)
+                    vectors_array.append(vectors['embedding'])
+            df_display.empty()
+            df.insert(3,"vectors",vectors_array)
+            df_display = st.dataframe(df)
 
-    if st.button("Create Vectors"):
-        with st.spinner("Generating vectors..."):
-            vectors_array = []
-            # go through the data frame
-            for idx, row in df.iterrows():
-                # get the content
-                content = row['content']
-                # encode
-                vectors = ollama.embeddings(model=EMBED_MODEL,prompt=content)
-                vectors_array.append(vectors['embedding'])
-        dfdisplay.empty()
-        df.insert(3,"vectors",vectors_array)
-        dfdisplay = st.dataframe(df)
 
-        numbers = list(map(str,df['number'].tolist()))
-        st.write(numbers)
+st.button("Save",on_click=save_df)
 
-        collection.add(
-            documents=df['content'].tolist(),
-            ids=numbers
-        )
 
-        st.write("Done. Now you can go query it.")
+    # if st.button("Create Vectors"):
+    #     with st.spinner("Generating vectors..."):
+    #         vectors_array = []
+    #         # go through the data frame
+    #         for idx, row in df.iterrows():
+    #             # get the content
+    #             content = row['content']
+    #             # encode
+    #             vectors = ollama.embeddings(model=EMBED_MODEL,prompt=content)
+    #             vectors_array.append(vectors['embedding'])
+    #     dfdisplay.empty()
+    #     df.insert(3,"vectors",vectors_array)
+    #     dfdisplay = st.dataframe(df)
+
+    #     numbers = list(map(str,df['number'].tolist()))
+    #     st.write(numbers)
+
+    #     collection.add(
+    #         documents=df['content'].tolist(),
+    #         ids=numbers
+    #     )
+
+    #     st.write("Done. Now you can go query it.")
 

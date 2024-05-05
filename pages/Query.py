@@ -43,7 +43,8 @@ if (query):
     with st.spinner("Working..."):
         vectors = ollama.embeddings(model=EMBED_MODEL,prompt=query)        
     #write it out
-    vector_text_content = str(vectors['embedding'])[0:255]
+    st.write("Vectorized query")
+    vector_text_content = str(vectors['embedding'])[0:255] + "...]"
     vector_text = st.write(vector_text_content)
 
     #now query the database for the text
@@ -54,13 +55,14 @@ if (query):
                 query_texts=query,
                 n_results=10
                 )
-        st.write(results["documents"])
-        final_prompt = prompt.format(context=results["documents"],question=query)
+        final_prompt = prompt.format(context=results["documents"][0],question=query)
         # now show a prompt
         st.write("Now the prompt")
         st.markdown(final_prompt)
-        st.write(len(final_prompt))
+        # now LLM submission
+        with st.spinner("Asking the LLM..."):
+            result = ollama.generate(model="mistral",prompt=final_prompt,stream=False)
+        st.write("The Answer...")
+        st.write(result['response'])
 
 
-
-#TODO - include LLM submission
