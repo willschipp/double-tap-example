@@ -4,6 +4,15 @@ import ollama
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
 
+import requests
+
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+headers = {"Authorization": "Bearer ..."}
+
+def query_huggingface(payload):
+	response = requests.post(API_URL, headers=headers, json=payload)
+	return response.json()
+	
 
 BASE_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
@@ -36,6 +45,7 @@ client = chromadb.PersistentClient(path="./vectorstore/chroma/")
 collection = client.get_or_create_collection(name="double-tap",embedding_function=embedding_function)
 
 query = st.text_input("Enter your query")
+st.divider()
 vectors = []
 
 if (query):
@@ -43,9 +53,12 @@ if (query):
     with st.spinner("Working..."):
         vectors = ollama.embeddings(model=EMBED_MODEL,prompt=query)        
     #write it out
-    st.write("Vectorized query")
+    st.subheader("Vectorized query")
     vector_text_content = str(vectors['embedding'])[0:255] + "...]"
     vector_text = st.write(vector_text_content)
+    st.write("Performed on the local CPU")
+
+    st.divider()
 
     #now query the database for the text
     if st.button("Run the Query"):
@@ -57,12 +70,17 @@ if (query):
                 )
         final_prompt = prompt.format(context=results["documents"][0],question=query)
         # now show a prompt
-        st.write("Now the prompt")
-        st.markdown(final_prompt)
+        st.subheader("Now ask the complete query")
+        # st.markdown(final_prompt)
+        # st.divider()
         # now LLM submission
         with st.spinner("Asking the LLM..."):
-            result = ollama.generate(model="mistral",prompt=final_prompt,stream=False)
-        st.write("The Answer...")
-        st.write(result['response'])
+            # result = ollama.generate(model="mistral",prompt=final_prompt,stream=False)
+            result = query_huggingface({
+                "inputs": final_prompt,
+                })
+        st.subheader("The Answer...")
+        st.write(result[0]['generated_text'])
+        st.write("Performed on a remote GPU")
 
 
