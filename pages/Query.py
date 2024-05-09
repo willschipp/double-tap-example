@@ -3,8 +3,16 @@ import ollama
 
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
-	
 
+import requests
+
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+headers = {"Authorization": "Bearer <add your token here>"}
+
+def query_huggingface(payload):
+	response = requests.post(API_URL, headers=headers, json=payload)
+	return response.json()
+	
 BASE_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
 
@@ -23,7 +31,7 @@ prompt = '''
     Answer the question using only the provided context.  
     If you don't know the answer, just reply with you don't know, don't try and make up a response.
 
-    {context}
+    Context: {context}
 
     Question: {question}
 '''
@@ -60,15 +68,17 @@ if (query):
                 n_results=10
                 )
         final_prompt = prompt.format(context=results["documents"][0],question=query)
-        # now show a prompt
         st.subheader("Now ask the complete query")
-        # st.markdown(final_prompt)
-        # st.divider()
         # now LLM submission
         with st.spinner("Asking the LLM..."):
-            result = ollama.generate(model="mistral",prompt=final_prompt,stream=False)
+            # switch to CPU model
+            # result = ollama.generate(model="mistral",prompt=final_prompt,stream=False)
+            result = query_huggingface({
+                "inputs": final_prompt,
+                })
         st.subheader("The Answer...")
-        st.write(result['response'])
+        generated_text = result[0]['generated_text']
+        st.write(generated_text)
         st.write("Performed on a remote GPU")
 
 
